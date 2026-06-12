@@ -2,12 +2,11 @@ from data_tools import scan_folder,read_and_align,merge_all,clean_data,export_ex
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# ===== 用户配置区域 =====
+# ===== User Configuration =====
 FOLDER_PATH = "input"
 OUTPUT_PATH = r"output\汇总.xlsx"
 STANDARD_COLS = ['name', 'department', 'salary']
 # =======================
-
 
 result = scan_folder(FOLDER_PATH, STANDARD_COLS)
 print('Valid files:', result['valid_files'])
