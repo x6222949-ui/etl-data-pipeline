@@ -1,9 +1,13 @@
 from data_tools import scan_folder,read_and_align,merge_all,clean_data,export_excel,plot_bar
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-FOLDER_PATH = r"C:\Users\29406\Desktop\Data架构\etl_demo\input"
-OUTPUT_PATH = r"C:\Users\29406\Desktop\Data架构\etl_demo\output\汇总.xlsx"
+# ===== 用户配置区域 =====
+FOLDER_PATH = "input"
+OUTPUT_PATH = r"output\汇总.xlsx"
+STANDARD_COLS = ['name', 'department', 'salary']
+# =======================
 
-STANDARD_COLS = ['name','department','salary']
 
 result = scan_folder(FOLDER_PATH, STANDARD_COLS)
 print('Valid files:', result['valid_files'])
