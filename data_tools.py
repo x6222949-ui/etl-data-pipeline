@@ -4,75 +4,52 @@ import openpyxl
 from openpyxl.styles import PatternFill,Font,Border,Side 
 import plotly.express as px
 
-def scan_folder(folder_path, standard_cols, rename_map=None):
+def scan_folder(folder_path):
     folder = Path(folder_path)
     valid_files = []
     report = []
 
     if not folder.exists():
-        print(f"Folder path not found:{folder_path}")
+        print(f"路径不存在：{folder_path}")
         return None
     
     for file in folder.glob("*.xls*"):
         try:
             df = pd.read_excel(file)
         except Exception as e:
-            report.append({'file': file.name, 'issue': f"Cannot open file:{e}"})
+            report.append({'file': file.name, 'issue': f"无法打开:{e}"})
             continue
         if df.empty:
-            report.append({'file': file.name, 'issue': "Empty file"})
-            continue
-        actual_cols = list(df.columns)
-        missing_cols = [col for col in standard_cols if col not in actual_cols]
-        if missing_cols:
-            if rename_map:
-                R_name = [r_n for r_n in df.columns if r_n in rename_map]
-                if not R_name:
-                    report.append({'file': file.name, 'issue': f"Missing columns: {missing_cols}"})
-                    continue
-                else:
-                    df = df.rename(columns=rename_map)
-                    actual_cols = list(df.columns)
-                    missing_cols = [col for col in standard_cols if col not in actual_cols]
-                    if missing_cols:
-                        report.append({'file': file.name, 'issue': f"Missing columns: {missing_cols}"})
-                        continue
-            else:
-                report.append({'file': file.name, 'issue': f"missing columns: {missing_cols}"})
-                continue
-        valid_files.append(str(file))
-    
+            report.append({'file': file.name, 'issue': "文件为空"})
+            continue       
+        valid_files.append(str(file))   
     return {
         "valid_files": valid_files,
         "report": report
     }
 
-
-def read_and_align(file_path,standard_cols,rename_map=None):
+def read_and_align(file_path, standard_cols, rename_map=None):
     '''
-    尝试读写方式打开excel文件,无法读取的返回报告,可以读取的对空列表返回None,对可处理列表做表头检测。
-    file_path : 文件名
-    rename_map = [] : 表头映射字典(可选)
-    standard_cols : 表头列值
+    读取函数接收一个文件地址来进行转换和过滤处理
+    standar_cols 标准表头值
+    rename_map 映射字典
     '''
     try:
         df = pd.read_excel(file_path)
     except Exception as e:
-        print(f"Cannot read file {file_path}: {e}")
+        print(f"无法读取文件 {file_path}: {e}")
+        return None
+    if df.empty:
+        print(f"{file_path} 是空文件")
         return None
     if rename_map:
-    #映射字典
-        df=df.rename(columns=rename_map)
-    if not df.empty:
-        try:
-            df = df[standard_cols]
-            return df
-        except Exception as e:
-            print(f"{file_path} processing failed: {e}")
-            return None
-    else:
-        print(f"{file_path} is empty")
+        df = df.rename(columns=rename_map)
+    # 重命名之后再检查列名是否齐全
+    missing_cols = [col for col in standard_cols if col not in df.columns]
+    if missing_cols:
+        print(f"{file_path} 缺少列: {missing_cols}")
         return None
+    return df[standard_cols]
     
 def merge_all(df_list):
     '''
@@ -83,24 +60,25 @@ def merge_all(df_list):
     merged=pd.concat(df_list, ignore_index=True)
     return merged
 
-def clean_data(df,col,subset=None):
+def clean_data(df,col_name,subset=None,dropna_cols=None):
     '''
     对列表进行清洗,建立列表副本后进行查重-修改格式 错误值转NaN-删除空白值，最后输出处理报告
     df : 有效列表文件
     col : 格式转换行名
     subset : 可调只读列查重 默认值关闭
+    dropna_cols:可调只删除某行空白值
     输出处理报告 : 原始{before}行->保留{after}行，删除{before-after}行
     '''
     df=df.copy()
     before=len(df)
 
     df=df.drop_duplicates(subset=subset)
-    df[col]=pd.to_numeric(df[col], errors='coerce')
-    df=df.dropna()
-    df[col]=df[col].astype(int)
+    df[col_name]=pd.to_numeric(df[col_name], errors='coerce')
+    df=df.dropna(subset=dropna_cols)
+    df[col_name]=df[col_name].astype(int)
     
     after = len(df)
-    print(f'Data cleaned:{before}rows——>{after}rows kept,{before-after}rows removed')
+    print(f'清洗完成：原始{before}行->保留{after}行，删除{before-after}行')
     return df
 
 def export_excel(df,output_path,header_color='4F81BD'):
@@ -139,13 +117,13 @@ def export_excel(df,output_path,header_color='4F81BD'):
                 max_length = max(max_length,len(str(cell.value)))
         ws.column_dimensions[col_letter].width=max_length+4
     wb.save(output_path)
-    print(f'Excel exported:{output_path}')
+    print(f'已导出:{output_path}')
 
 def plot_bar(df,output_folder,filename,x,y,color=None,title=None):
     '''
-    自动绘制柱状图
+    自动绘制柱状图 可选形参有颜色分类color= 表名注释title=
     '''
     output_path=Path(output_folder)/(filename+ '.html')
     fig=px.bar(df,x=x,y=y,color=color,title=title)
     fig.write_html(output_path)
-    print(f'Chart exported:{output_path}')
+    print(f'导出成功')
